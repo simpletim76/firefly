@@ -1,8 +1,9 @@
-.PHONY: help build up down restart logs clean test setup
+.PHONY: help build up down restart logs clean test setup prepare
 
 help:
 	@echo "Project Firefly - Makefile Commands"
 	@echo "===================================="
+	@echo "make prepare  - Prepare directories with correct permissions"
 	@echo "make build    - Build Docker image"
 	@echo "make up       - Start container"
 	@echo "make down     - Stop container"
@@ -12,10 +13,16 @@ help:
 	@echo "make test     - Run tests"
 	@echo "make setup    - Run setup script"
 
-build:
+prepare:
+	@echo "Preparing directories..."
+	@mkdir -p data logs
+	@chmod 777 data logs
+	@echo "✓ Directories created with correct permissions"
+
+build: prepare
 	docker-compose build
 
-up:
+up: prepare
 	docker-compose up -d
 	@echo "Firefly is starting..."
 	@echo "Web interface: http://localhost:8080"

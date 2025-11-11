@@ -11,23 +11,37 @@ import time
 from pathlib import Path
 
 # Configure logging
+log_handlers = [logging.StreamHandler(sys.stdout)]
+
+# Try to add file handler if possible (may fail due to volume mount permissions)
+try:
+    log_file = Path('/app/logs/firefly.log')
+    log_file.parent.mkdir(parents=True, exist_ok=True)
+    log_handlers.append(logging.FileHandler(str(log_file)))
+except (OSError, PermissionError) as e:
+    # If we can't write to log file, just use stdout (common in Docker)
+    print(f"Warning: Cannot write to log file: {e}. Logging to stdout only.")
+
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.StreamHandler(sys.stdout),
-        logging.FileHandler('/app/logs/firefly.log') if os.path.exists('/app/logs') else logging.StreamHandler()
-    ]
+    handlers=log_handlers
 )
 
 logger = logging.getLogger(__name__)
 
-# Ensure data directory exists
-data_dir = Path('/app/data')
-data_dir.mkdir(parents=True, exist_ok=True)
+# Ensure data directory exists (may fail with volume mount permission issues)
+try:
+    data_dir = Path('/app/data')
+    data_dir.mkdir(parents=True, exist_ok=True)
+except (OSError, PermissionError) as e:
+    logger.warning(f"Cannot create data directory: {e}")
 
-logs_dir = Path('/app/logs')
-logs_dir.mkdir(parents=True, exist_ok=True)
+try:
+    logs_dir = Path('/app/logs')
+    logs_dir.mkdir(parents=True, exist_ok=True)
+except (OSError, PermissionError) as e:
+    logger.warning(f"Cannot create logs directory: {e}")
 
 # Import application modules
 from app.database import init_database

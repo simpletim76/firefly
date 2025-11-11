@@ -33,30 +33,48 @@ A whitelist-only DNS server with a web admin interface, designed to run efficien
 
 ### Installation
 
+**Option 1: Quick Start (Recommended)**
+
+Use the provided start script that handles everything:
+```bash
+cd /path/to/firefly
+./start.sh
+```
+
+**Option 2: Manual Setup**
+
 1. **Clone or create the project:**
    ```bash
    cd /path/to/firefly
    ```
 
-2. **Configure environment (optional):**
+2. **Prepare directories (important for permissions):**
+   ```bash
+   mkdir -p data logs
+   chmod 777 data logs
+   ```
+   Or use: `make prepare`
+
+3. **Configure environment (optional):**
    ```bash
    cp .env.example .env
    nano .env  # Customize settings
    ```
 
-3. **Build and start the container:**
+4. **Build and start the container:**
    ```bash
    docker-compose build
    docker-compose up -d
    ```
+   Or use: `make build && make up`
 
-4. **Verify it's running:**
+5. **Verify it's running:**
    ```bash
    docker-compose ps
    docker-compose logs -f
    ```
 
-5. **Access the web interface:**
+6. **Access the web interface:**
    - URL: `http://your-raspberry-pi-ip:8080`
    - Default username: `admin`
    - Default password: `admin123`
@@ -294,6 +312,26 @@ Ensure devices are configured to use Firefly's IP address.
 **Solution**:
 - Ensure only one Firefly instance is running
 - Check for crashed processes: `docker-compose restart`
+
+### Permission Errors (Logs/Database)
+
+**Issue**: `PermissionError: [Errno 13] Permission denied: '/app/logs/firefly.log'`
+
+**Cause**: Host directories mounted as volumes may not have correct permissions for the container user (UID 1000).
+
+**Solution**:
+```bash
+# Fix permissions on host directories
+chmod 777 data logs
+
+# Or run the prepare command
+make prepare
+
+# Then restart the container
+docker-compose restart
+```
+
+**Alternative**: The application will automatically fall back to stdout-only logging if it can't write to the log file, so this won't prevent Firefly from running.
 
 ### Container Crashes
 
