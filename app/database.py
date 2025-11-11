@@ -90,10 +90,10 @@ def init_database():
         ''')
 
         # Insert default admin user (password: admin123 - CHANGE THIS!)
-        # Password hash for 'admin123'
+        # Password hash for 'admin123' generated with werkzeug
         cursor.execute('''
             INSERT OR IGNORE INTO users (username, password_hash)
-            VALUES ('admin', 'pbkdf2:sha256:600000$sAlt123$8e3c5b7e9f1a2d4c6b8a0e2f4d6c8b0a2e4f6d8c0b2a4e6f8d0c2b4a6e8f0d2c')
+            VALUES ('admin', 'scrypt:32768:8:1$qaCAJ7VlgOOYlND7$1518d9e1eb8722a89161e2c097574af6174c40b5a5e8c0f3618e64cc267a1eb80f165da418d9ba94ca983c10c769bbb02a8c9f08f23d0ecc3fddf4aafa9b1722')
         ''')
 
         # Insert default configuration
