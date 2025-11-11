@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+
+{% block title %}Whitelist - Project Firefly{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>Whitelist Management</h2>
+    <p>Manage allowed domains</p>
+</div>
+
+<div class="section">
+    <h3>Add New Domain</h3>
+    <form method="POST" action="{{ url_for('add_domain') }}" class="form-inline">
+        <div class="form-group">
+            <label for="domain">Domain:</label>
+            <input type="text" id="domain" name="domain" placeholder="example.com" required>
+        </div>
+        <div class="form-group">
+            <label for="description">Description:</label>
+            <input type="text" id="description" name="description" placeholder="Optional description">
+        </div>
+        <button type="submit" class="btn btn-primary">Add Domain</button>
+    </form>
+</div>
+
+<div class="section">
+    <h3>Whitelisted Domains ({{ domains|length }})</h3>
+
+    {% if domains %}
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Domain</th>
+                    <th>Description</th>
+                    <th>Added By</th>
+                    <th>Added Date</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for domain in domains %}
+                <tr {% if not domain.enabled %}class="disabled"{% endif %}>
+                    <td><code>{{ domain.domain }}</code></td>
+                    <td>{{ domain.description or '-' }}</td>
+                    <td>{{ domain.added_by }}</td>
+                    <td>{{ domain.added_date }}</td>
+                    <td>
+                        {% if domain.enabled %}
+                            <span class="badge badge-success">Enabled</span>
+                        {% else %}
+                            <span class="badge badge-secondary">Disabled</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <form method="POST" action="{{ url_for('toggle_domain', domain=domain.domain) }}" style="display: inline;">
+                            <button type="submit" class="btn btn-sm btn-warning">
+                                {% if domain.enabled %}Disable{% else %}Enable{% endif %}
+                            </button>
+                        </form>
+                        <form method="POST" action="{{ url_for('remove_domain', domain=domain.domain) }}" style="display: inline;">
+                            <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Remove {{ domain.domain }}?')">Remove</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <p>No domains in whitelist. Add your first domain above.</p>
+    </div>
+    {% endif %}
+</div>
+
+<div class="info-box">
+    <h4>ℹ️ Whitelist Tips</h4>
+    <ul>
+        <li>Add parent domains (e.g., <code>example.com</code>) to allow all subdomains</li>
+        <li>Add specific subdomains (e.g., <code>api.example.com</code>) for granular control</li>
+        <li>Temporarily disable domains instead of removing them</li>
+        <li>Use descriptions to document why domains are whitelisted</li>
+    </ul>
+</div>
+{% endblock %}

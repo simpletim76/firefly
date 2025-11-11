@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+
+{% block title %}Login - Project Firefly{% endblock %}
+
+{% block content %}
+<div class="login-container">
+    <div class="login-box">
+        <h2>🔥 Project Firefly</h2>
+        <p class="subtitle">Whitelist DNS Filter Admin</p>
+
+        <form method="POST" action="{{ url_for('login') }}">
+            <div class="form-group">
+                <label for="username">Username</label>
+                <input type="text" id="username" name="username" required autofocus>
+            </div>
+
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password" required>
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-block">Login</button>
+        </form>
+
+        <div class="login-info">
+            <p><strong>Default credentials:</strong></p>
+            <p>Username: <code>admin</code></p>
+            <p>Password: <code>admin123</code></p>
+            <p class="warning">⚠️ Please change the default password after first login!</p>
+        </div>
+    </div>
+</div>
+{% endblock %}

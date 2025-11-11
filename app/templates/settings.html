@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+
+{% block title %}Settings - Project Firefly{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>Settings</h2>
+    <p>Configure DNS server and application settings</p>
+</div>
+
+<div class="section">
+    <h3>DNS Configuration</h3>
+    <form method="POST" action="{{ url_for('update_settings') }}">
+        <div class="form-group">
+            <label for="upstream_dns">Upstream DNS Server</label>
+            <input type="text" id="upstream_dns" name="upstream_dns"
+                   value="{{ config.upstream_dns or '8.8.8.8' }}" required>
+            <small>DNS server to forward whitelisted queries to (e.g., 8.8.8.8, 1.1.1.1)</small>
+        </div>
+
+        <div class="form-group">
+            <label for="block_response">Block Response IP</label>
+            <input type="text" id="block_response" name="block_response"
+                   value="{{ config.block_response or '0.0.0.0' }}" required>
+            <small>IP address to return for blocked domains (0.0.0.0 or 127.0.0.1)</small>
+        </div>
+
+        <div class="form-group">
+            <label for="log_retention_days">Log Retention (days)</label>
+            <input type="number" id="log_retention_days" name="log_retention_days"
+                   value="{{ config.log_retention_days or '30' }}" min="1" max="365" required>
+            <small>Number of days to keep DNS query logs</small>
+        </div>
+
+        <button type="submit" class="btn btn-primary">Save Settings</button>
+    </form>
+</div>
+
+<div class="section">
+    <h3>System Information</h3>
+    <div class="info-table">
+        <table>
+            <tr>
+                <td><strong>DNS Port:</strong></td>
+                <td>{{ config.dns_port or '53' }}</td>
+            </tr>
+            <tr>
+                <td><strong>Web Port:</strong></td>
+                <td>{{ config.web_port or '8080' }}</td>
+            </tr>
+            <tr>
+                <td><strong>Database:</strong></td>
+                <td><code>/app/data/firefly.db</code></td>
+            </tr>
+        </table>
+    </div>
+</div>
+
+<div class="info-box info-box-warning">
+    <h4>⚠️ Important Notes</h4>
+    <ul>
+        <li>Changes to DNS settings require container restart to take effect</li>
+        <li>Default admin password should be changed in production</li>
+        <li>Backup the database regularly from the <code>/app/data</code> directory</li>
+    </ul>
+</div>
+{% endblock %}

@@ -1,0 +1,67 @@
+version: '3.8'
+
+services:
+  firefly:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: firefly-dns
+    image: firefly:latest
+
+    # Network configuration
+    # Using host network mode for DNS server to work properly
+    # Alternative: use port mapping for specific ports
+    network_mode: host
+
+    # Port mappings (only if not using host network mode)
+    # ports:
+    #   - "53:53/udp"    # DNS server
+    #   - "8080:8080"     # Web interface
+
+    # Environment variables
+    environment:
+      - DNS_HOST=0.0.0.0
+      - DNS_PORT=53
+      - WEB_HOST=0.0.0.0
+      - WEB_PORT=8080
+      - DB_PATH=/app/data/firefly.db
+      - SECRET_KEY=change-this-secret-key-in-production
+      - LOG_LEVEL=INFO
+      - TZ=UTC
+
+    # Volume mounts for persistent data
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+
+    # Restart policy
+    restart: unless-stopped
+
+    # Resource limits (adjust based on your Raspberry Pi model)
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 256M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+
+    # Capabilities needed for DNS server on port 53
+    cap_add:
+      - NET_BIND_SERVICE
+
+    # Health check
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/api/stats"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+    # Logging configuration
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"

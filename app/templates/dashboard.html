@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Project Firefly{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>Dashboard</h2>
+    <p>DNS filtering statistics and recent activity</p>
+</div>
+
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-value">{{ stats.total_queries }}</div>
+        <div class="stat-label">Total Queries</div>
+    </div>
+
+    <div class="stat-card stat-success">
+        <div class="stat-value">{{ stats.allowed_queries }}</div>
+        <div class="stat-label">Allowed</div>
+    </div>
+
+    <div class="stat-card stat-danger">
+        <div class="stat-value">{{ stats.blocked_queries }}</div>
+        <div class="stat-label">Blocked</div>
+    </div>
+
+    <div class="stat-card stat-info">
+        <div class="stat-value">{{ stats.whitelist_count }}</div>
+        <div class="stat-label">Whitelisted Domains</div>
+    </div>
+</div>
+
+{% if stats.top_blocked %}
+<div class="section">
+    <h3>Top Blocked Domains</h3>
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Domain</th>
+                    <th>Blocked Count</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in stats.top_blocked %}
+                <tr>
+                    <td><code>{{ item.domain }}</code></td>
+                    <td>{{ item.count }}</td>
+                    <td>
+                        <form method="POST" action="{{ url_for('add_domain') }}" style="display: inline;">
+                            <input type="hidden" name="domain" value="{{ item.domain }}">
+                            <button type="submit" class="btn btn-sm btn-success">Add to Whitelist</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+
+<div class="section">
+    <h3>Recent DNS Queries</h3>
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Time</th>
+                    <th>Client IP</th>
+                    <th>Domain</th>
+                    <th>Type</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for log in recent_logs %}
+                <tr>
+                    <td>{{ log.timestamp }}</td>
+                    <td><code>{{ log.client_ip }}</code></td>
+                    <td><code>{{ log.domain }}</code></td>
+                    <td>{{ log.query_type }}</td>
+                    <td>
+                        {% if log.allowed %}
+                            <span class="badge badge-success">Allowed</span>
+                        {% else %}
+                            <span class="badge badge-danger">Blocked</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <a href="{{ url_for('logs') }}" class="btn btn-secondary">View All Logs</a>
+</div>
+{% endblock %}

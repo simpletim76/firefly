@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+
+{% block title %}DNS Logs - Project Firefly{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>DNS Query Logs</h2>
+    <p>View and search DNS query history</p>
+</div>
+
+<div class="section">
+    <form method="GET" action="{{ url_for('logs') }}" class="form-inline">
+        <div class="form-group">
+            <label for="search">Search domain:</label>
+            <input type="text" id="search" name="search" placeholder="example.com" value="{{ search or '' }}">
+        </div>
+        <button type="submit" class="btn btn-primary">Search</button>
+        {% if search %}
+            <a href="{{ url_for('logs') }}" class="btn btn-secondary">Clear</a>
+        {% endif %}
+    </form>
+</div>
+
+<div class="section">
+    {% if logs %}
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Timestamp</th>
+                    <th>Client IP</th>
+                    <th>Domain</th>
+                    <th>Query Type</th>
+                    <th>Status</th>
+                    <th>Response IP</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for log in logs %}
+                <tr>
+                    <td>{{ log.timestamp }}</td>
+                    <td><code>{{ log.client_ip }}</code></td>
+                    <td><code>{{ log.domain }}</code></td>
+                    <td>{{ log.query_type }}</td>
+                    <td>
+                        {% if log.allowed %}
+                            <span class="badge badge-success">Allowed</span>
+                        {% else %}
+                            <span class="badge badge-danger">Blocked</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if log.response_ip %}
+                            <code>{{ log.response_ip }}</code>
+                        {% else %}
+                            -
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="pagination">
+        {% if page > 1 %}
+            <a href="{{ url_for('logs', page=page-1, search=search) }}" class="btn btn-secondary">Previous</a>
+        {% endif %}
+        <span>Page {{ page }}</span>
+        <a href="{{ url_for('logs', page=page+1, search=search) }}" class="btn btn-secondary">Next</a>
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <p>No logs found.</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
