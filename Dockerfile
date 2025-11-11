@@ -31,14 +31,14 @@ RUN apk add --no-cache \
     musl-dev \
     libffi-dev \
     openssl-dev \
+    wget \
     && rm -rf /var/cache/apk/*
 
 # Copy requirements first (for better layer caching)
 COPY --chown=firefly:firefly requirements.txt .
 
 # Install Python dependencies
-RUN pip install --no-cache-dir -r requirements.txt && \
-    pip cache purge
+RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application code
 COPY --chown=firefly:firefly app/ ./app/
