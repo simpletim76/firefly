@@ -18,6 +18,10 @@ services:
     #   - "53:53/udp"    # DNS server
     #   - "8080:8080"     # Web interface
 
+    # Run as root to bind to privileged port 53
+    # Required for DNS server functionality with host network mode
+    user: root
+
     # Environment variables
     environment:
       - DNS_HOST=0.0.0.0

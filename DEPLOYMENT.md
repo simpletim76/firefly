@@ -78,7 +78,20 @@ docker-compose restart
 
 **Note**: The application will automatically fall back to stdout-only logging if it encounters permission errors, so Firefly will still run.
 
-### Issue 2: Container Won't Start
+### Issue 2: DNS Server Permission Denied
+
+**Error**: `Permission denied` when binding to port 53
+
+**Cause**: Port 53 is a privileged port requiring root access.
+
+**Solution**: The container is configured to run as root in `docker-compose.yml`:
+```yaml
+user: root  # Required for DNS port 53
+```
+
+This is already set by default. If you see this error, verify the line is present in your docker-compose.yml.
+
+### Issue 3: Container Won't Start
 
 **Check**:
 ```bash
@@ -86,11 +99,11 @@ docker-compose logs
 ```
 
 **Common causes**:
-- Port 53 already in use (another DNS server running)
+- Port 53 already in use (another DNS server running - check with `sudo lsof -i :53`)
 - Port 8080 already in use
-- Insufficient permissions
+- Docker daemon not running
 
-### Issue 3: Can't Access Web Interface
+### Issue 4: Can't Access Web Interface
 
 **Verify container is running**:
 ```bash

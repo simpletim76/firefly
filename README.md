@@ -266,12 +266,16 @@ docker-compose exec firefly python -c "from app.database import cleanup_old_logs
 
 ### DNS Server Won't Start
 
-**Issue**: Permission denied on port 53
+**Issue**: `Permission denied` on port 53
 
-**Solution**: Ensure container has `NET_BIND_SERVICE` capability (already set in docker-compose.yml) or run container as root:
+**Cause**: Binding to privileged ports (< 1024) requires root privileges, especially with host network mode.
+
+**Solution**: The docker-compose.yml is configured to run as root by default:
 ```yaml
-user: root
+user: root  # Required for DNS on port 53
 ```
+
+This is already set and necessary for DNS server functionality. If you removed it, re-add this line.
 
 ### Web Interface Not Accessible
 
@@ -368,10 +372,15 @@ Typical resource consumption on Raspberry Pi 4:
 
 1. **Change default password**: Change `admin123` immediately after first login
 2. **Secure SECRET_KEY**: Use a strong random key in production
-3. **Network isolation**: Consider running Firefly on isolated network segment
-4. **Regular updates**: Keep Docker image and dependencies updated
-5. **HTTPS**: For production, consider adding HTTPS with reverse proxy (nginx)
-6. **Firewall**: Restrict web interface access to trusted IPs
+3. **Root user note**: The container runs as root to bind to port 53 (DNS). This is standard for DNS servers and acceptable because:
+   - The container is still isolated from the host system
+   - DNS servers traditionally require elevated privileges
+   - It's a dedicated appliance for a single purpose
+   - Alternative: Use port 5353 and redirect with iptables if root access is a concern
+4. **Network isolation**: Consider running Firefly on isolated network segment
+5. **Regular updates**: Keep Docker image and dependencies updated
+6. **HTTPS**: For production, consider adding HTTPS with reverse proxy (nginx)
+7. **Firewall**: Restrict web interface access to trusted IPs
 
 ## Advanced Usage
 
