@@ -1,5 +1,8 @@
 .PHONY: help build up down restart logs clean test setup prepare
 
+# Detect Docker Compose command (V1 or V2)
+DOCKER_COMPOSE := $(shell docker compose version > /dev/null 2>&1 && echo "docker compose" || echo "docker-compose")
+
 help:
 	@echo "Project Firefly - Makefile Commands"
 	@echo "===================================="
@@ -20,25 +23,25 @@ prepare:
 	@echo "✓ Directories created with correct permissions"
 
 build: prepare
-	docker-compose build
+	$(DOCKER_COMPOSE) build
 
 up: prepare
-	docker-compose up -d
+	$(DOCKER_COMPOSE) up -d
 	@echo "Firefly is starting..."
 	@echo "Web interface: http://localhost:8080"
 	@echo "Default login: admin / admin123"
 
 down:
-	docker-compose down
+	$(DOCKER_COMPOSE) down
 
 restart:
-	docker-compose restart
+	$(DOCKER_COMPOSE) restart
 
 logs:
-	docker-compose logs -f
+	$(DOCKER_COMPOSE) logs -f
 
 clean:
-	docker-compose down -v
+	$(DOCKER_COMPOSE) down -v
 	rm -rf data/*.db logs/*.log
 
 test:
@@ -48,4 +51,4 @@ setup:
 	python3 setup.py
 
 status:
-	docker-compose ps
+	$(DOCKER_COMPOSE) ps
