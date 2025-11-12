@@ -35,29 +35,29 @@ def test_multi_profile():
     init_database()
     print("   ✓ Database initialized")
 
-    # Create profiles for two kids
+    # Create profiles for Aurora and Harriet
     print("\n2️⃣  Creating profiles...")
-    emma_id = create_profile(name="Emma", age=6, color="#FF69B4")  # Pink
-    jake_id = create_profile(name="Jake", age=9, color="#4169E1")  # Royal Blue
-    print(f"   ✓ Created profile: Emma (ID: {emma_id}, Age: 6)")
-    print(f"   ✓ Created profile: Jake (ID: {jake_id}, Age: 9)")
+    harriet_id = create_profile(name="Harriet", age=6, color="#FF69B4")  # Pink
+    aurora_id = create_profile(name="Aurora", age=9, color="#9370DB")  # Purple
+    print(f"   ✓ Created profile: Harriet (ID: {harriet_id}, Age: 6)")
+    print(f"   ✓ Created profile: Aurora (ID: {aurora_id}, Age: 9)")
 
-    # Add age-appropriate domains to Emma's whitelist (6 years old)
-    print("\n3️⃣  Adding domains to Emma's whitelist (age 6)...")
-    emma_domains = [
+    # Add age-appropriate domains to Harriet's whitelist (6 years old)
+    print("\n3️⃣  Adding domains to Harriet's whitelist (age 6)...")
+    harriet_domains = [
         ('pbskids.org', 'PBS Kids educational games'),
         ('nickjr.com', 'Nick Jr shows'),
         ('youtube.com', 'YouTube Kids content'),
         ('google.com', 'Search engine'),
     ]
 
-    for domain, desc in emma_domains:
-        add_to_profile_whitelist(emma_id, domain, desc)
+    for domain, desc in harriet_domains:
+        add_to_profile_whitelist(harriet_id, domain, desc)
         print(f"   ✓ Added: {domain}")
 
-    # Add age-appropriate domains to Jake's whitelist (9 years old)
-    print("\n4️⃣  Adding domains to Jake's whitelist (age 9)...")
-    jake_domains = [
+    # Add age-appropriate domains to Aurora's whitelist (9 years old)
+    print("\n4️⃣  Adding domains to Aurora's whitelist (age 9)...")
+    aurora_domains = [
         ('scratch.mit.edu', 'Scratch programming'),
         ('khanacademy.org', 'Khan Academy learning'),
         ('minecraft.net', 'Minecraft'),
@@ -66,60 +66,60 @@ def test_multi_profile():
         ('wikipedia.org', 'Wikipedia'),
     ]
 
-    for domain, desc in jake_domains:
-        add_to_profile_whitelist(jake_id, domain, desc)
+    for domain, desc in aurora_domains:
+        add_to_profile_whitelist(aurora_id, domain, desc)
         print(f"   ✓ Added: {domain}")
 
     # Register devices
     print("\n5️⃣  Registering devices...")
-    emma_ipad = register_device("Emma's iPad", "192.168.1.10", emma_id)
-    jake_tablet = register_device("Jake's Tablet", "192.168.1.11", jake_id)
-    print(f"   ✓ Registered: Emma's iPad (192.168.1.10) → Emma's profile")
-    print(f"   ✓ Registered: Jake's Tablet (192.168.1.11) → Jake's profile")
+    harriet_device = register_device("Harriet's Device", "192.168.1.10", harriet_id)
+    aurora_device = register_device("Aurora's Device", "192.168.1.11", aurora_id)
+    print(f"   ✓ Registered: Harriet's Device (192.168.1.10) → Harriet's profile")
+    print(f"   ✓ Registered: Aurora's Device (192.168.1.11) → Aurora's profile")
 
     # Test domain filtering
     print("\n6️⃣  Testing profile-based domain filtering...")
 
-    # Test Emma's profile
-    print("\n   Emma's Profile (Age 6):")
-    test_domains_emma = [
+    # Test Harriet's profile
+    print("\n   Harriet's Profile (Age 6):")
+    test_domains_harriet = [
         'pbskids.org',
         'scratch.mit.edu',  # Should be blocked
         'youtube.com',
         'facebook.com',  # Should be blocked
     ]
 
-    for domain in test_domains_emma:
-        allowed = is_domain_whitelisted_for_profile(domain, emma_id)
+    for domain in test_domains_harriet:
+        allowed = is_domain_whitelisted_for_profile(domain, harriet_id)
         status = "✓ ALLOWED" if allowed else "✗ BLOCKED"
         print(f"      {status}: {domain}")
 
-    # Test Jake's profile
-    print("\n   Jake's Profile (Age 9):")
-    test_domains_jake = [
-        'pbskids.org',  # Should be blocked (not in his list)
+    # Test Aurora's profile
+    print("\n   Aurora's Profile (Age 9):")
+    test_domains_aurora = [
+        'pbskids.org',  # Should be blocked (not in her list)
         'scratch.mit.edu',
         'minecraft.net',
         'facebook.com',  # Should be blocked
     ]
 
-    for domain in test_domains_jake:
-        allowed = is_domain_whitelisted_for_profile(domain, jake_id)
+    for domain in test_domains_aurora:
+        allowed = is_domain_whitelisted_for_profile(domain, aurora_id)
         status = "✓ ALLOWED" if allowed else "✗ BLOCKED"
         print(f"      {status}: {domain}")
 
     # Test subdomain support
     print("\n7️⃣  Testing subdomain support...")
-    print("   Emma's profile - testing subdomains of youtube.com:")
+    print("   Harriet's profile - testing subdomains of youtube.com:")
     subdomains = ['www.youtube.com', 'm.youtube.com', 'kids.youtube.com']
     for subdomain in subdomains:
-        allowed = is_domain_whitelisted_for_profile(subdomain, emma_id)
+        allowed = is_domain_whitelisted_for_profile(subdomain, harriet_id)
         status = "✓ ALLOWED" if allowed else "✗ BLOCKED"
         print(f"      {status}: {subdomain}")
 
     # Display profile summaries
     print("\n8️⃣  Profile Summaries:")
-    for profile_id, profile_name in [(emma_id, "Emma"), (jake_id, "Jake")]:
+    for profile_id, profile_name in [(harriet_id, "Harriet"), (aurora_id, "Aurora")]:
         profile = get_profile(profile_id)
         whitelist = get_profile_whitelist(profile_id)
         print(f"\n   📋 {profile_name}'s Profile:")
