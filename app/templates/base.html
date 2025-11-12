@@ -18,6 +18,7 @@
                 <li><a href="{{ url_for('whitelist') }}" {% if request.endpoint == 'whitelist' %}class="active"{% endif %}>Whitelist</a></li>
                 <li><a href="{{ url_for('logs') }}" {% if request.endpoint == 'logs' %}class="active"{% endif %}>Logs</a></li>
                 <li><a href="{{ url_for('settings') }}" {% if request.endpoint == 'settings' %}class="active"{% endif %}>Settings</a></li>
+                <li><a href="{{ url_for('change_password_route') }}" {% if request.endpoint == 'change_password_route' %}class="active"{% endif %}>Change Password</a></li>
                 <li><a href="{{ url_for('logout') }}" class="logout">Logout</a></li>
             </ul>
         </nav>

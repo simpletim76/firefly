@@ -11,6 +11,7 @@
 <div class="section">
     <h3>DNS Configuration</h3>
     <form method="POST" action="{{ url_for('update_settings') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
         <div class="form-group">
             <label for="upstream_dns">Upstream DNS Server</label>
             <input type="text" id="upstream_dns" name="upstream_dns"

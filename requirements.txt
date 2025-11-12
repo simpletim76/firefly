@@ -1,5 +1,7 @@
 flask==3.0.0
 flask-login==0.6.3
+flask-wtf==1.2.1
+flask-limiter==3.5.0
 dnslib==0.9.24
 werkzeug==3.0.1
 gunicorn==21.2.0

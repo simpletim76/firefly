@@ -29,9 +29,10 @@ services:
       - WEB_HOST=0.0.0.0
       - WEB_PORT=8080
       - DB_PATH=/app/data/firefly.db
-      - SECRET_KEY=change-this-secret-key-in-production
+      - SECRET_KEY=${SECRET_KEY}
       - LOG_LEVEL=INFO
       - TZ=UTC
+      - FLASK_ENV=production
 
     # Volume mounts for persistent data
     volumes:

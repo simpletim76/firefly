@@ -9,6 +9,8 @@
         <p class="subtitle">Whitelist DNS Filter Admin</p>
 
         <form method="POST" action="{{ url_for('login') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+
             <div class="form-group">
                 <label for="username">Username</label>
                 <input type="text" id="username" name="username" required autofocus>
@@ -23,10 +25,8 @@
         </form>
 
         <div class="login-info">
-            <p><strong>Default credentials:</strong></p>
-            <p>Username: <code>admin</code></p>
-            <p>Password: <code>admin123</code></p>
-            <p class="warning">⚠️ Please change the default password after first login!</p>
+            <p><strong>First time setup:</strong></p>
+            <p>Check the application logs or <code>/app/data/initial_password.txt</code> for your generated admin password.</p>
         </div>
     </div>
 </div>

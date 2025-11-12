@@ -89,12 +89,57 @@ def init_database():
             )
         ''')
 
-        # Insert default admin user (password: admin123 - CHANGE THIS!)
-        # Password hash for 'admin123' generated with werkzeug
-        cursor.execute('''
-            INSERT OR IGNORE INTO users (username, password_hash)
-            VALUES ('admin', 'scrypt:32768:8:1$qaCAJ7VlgOOYlND7$1518d9e1eb8722a89161e2c097574af6174c40b5a5e8c0f3618e64cc267a1eb80f165da418d9ba94ca983c10c769bbb02a8c9f08f23d0ecc3fddf4aafa9b1722')
-        ''')
+        # SECURITY FIX: Generate random password for initial admin user
+        # Check if any users exist
+        cursor.execute('SELECT COUNT(*) as count FROM users')
+        user_count = cursor.fetchone()['count']
+
+        if user_count == 0:
+            # No users exist - generate random password
+            import secrets
+            import string
+            from app.auth import hash_password
+
+            # Generate secure random password
+            alphabet = string.ascii_letters + string.digits + string.punctuation
+            temp_password = ''.join(secrets.choice(alphabet) for _ in range(16))
+
+            # Hash the password
+            password_hash = hash_password(temp_password)
+
+            # Insert admin user with generated password
+            cursor.execute('''
+                INSERT INTO users (username, password_hash)
+                VALUES ('admin', ?)
+            ''', (password_hash,))
+
+            # Write password to secure file (not in version control)
+            password_file = os.path.join(os.path.dirname(DB_PATH), 'initial_password.txt')
+            try:
+                with open(password_file, 'w') as f:
+                    f.write(f"Initial Admin Password\n")
+                    f.write(f"=====================\n\n")
+                    f.write(f"Username: admin\n")
+                    f.write(f"Password: {temp_password}\n\n")
+                    f.write(f"IMPORTANT: Change this password immediately after first login!\n")
+                    f.write(f"This file will be deleted after you change the password.\n")
+
+                os.chmod(password_file, 0o600)  # Only owner can read
+
+                print("=" * 70)
+                print("🔐 INITIAL ADMIN PASSWORD GENERATED")
+                print("=" * 70)
+                print(f"Username: admin")
+                print(f"Password: {temp_password}")
+                print(f"\nPassword also saved to: {password_file}")
+                print("IMPORTANT: Change this password immediately after first login!")
+                print("=" * 70)
+
+            except Exception as e:
+                print(f"ERROR: Could not write password file: {e}")
+                print(f"IMPORTANT: Save this password now: {temp_password}")
+        else:
+            print("✓ Users already exist, skipping initial user creation")
 
         # Insert default configuration
         default_configs = [
@@ -311,3 +356,55 @@ def update_last_login(username: str):
             SET last_login = CURRENT_TIMESTAMP
             WHERE username = ?
         ''', (username,))
+
+
+def change_password(username: str, new_password: str) -> bool:
+    """
+    Change a user's password
+
+    Args:
+        username: Username
+        new_password: New password (plain text)
+
+    Returns:
+        bool: True if password changed successfully
+    """
+    from app.auth import hash_password
+
+    password_hash = hash_password(new_password)
+
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute('''
+            UPDATE users
+            SET password_hash = ?
+            WHERE username = ?
+        ''', (password_hash, username))
+
+        if cursor.rowcount > 0:
+            # Delete initial password file if it exists
+            password_file = os.path.join(os.path.dirname(DB_PATH), 'initial_password.txt')
+            if os.path.exists(password_file):
+                try:
+                    os.remove(password_file)
+                    print(f"✓ Deleted initial password file")
+                except Exception as e:
+                    print(f"Warning: Could not delete password file: {e}")
+            return True
+
+        return False
+
+
+def is_default_password(username: str) -> bool:
+    """
+    Check if user is still using initial password
+    (by checking if initial_password.txt exists)
+
+    Args:
+        username: Username to check
+
+    Returns:
+        bool: True if still using initial password
+    """
+    password_file = os.path.join(os.path.dirname(DB_PATH), 'initial_password.txt')
+    return os.path.exists(password_file)

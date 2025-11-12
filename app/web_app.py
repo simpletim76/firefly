@@ -5,19 +5,73 @@ Provides admin interface for whitelist management
 
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
+from flask_wtf.csrf import CSRFProtect, CSRFError
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 from werkzeug.security import check_password_hash
+from urllib.parse import urlparse, urljoin
 import os
+import logging
 
 from app.auth import User
 from app.database import (
     add_to_whitelist, remove_from_whitelist, get_whitelist,
     toggle_whitelist_entry, get_recent_logs, get_stats,
-    get_logs_by_domain, get_all_config, set_config
+    get_logs_by_domain, get_all_config, set_config,
+    change_password, is_default_password
 )
+from config.config import Config
+
+# Initialize logger
+logger = logging.getLogger(__name__)
+
+
+def is_safe_url(target):
+    """
+    Validate that a redirect URL is safe (same domain)
+
+    Args:
+        target: URL to validate
+
+    Returns:
+        bool: True if URL is safe to redirect to
+    """
+    if not target:
+        return False
+
+    ref_url = urlparse(request.host_url)
+    test_url = urlparse(urljoin(request.host_url, target))
+
+    # Only allow http/https and same domain
+    return (test_url.scheme in ('http', 'https') and
+            ref_url.netloc == test_url.netloc)
+
 
 # Initialize Flask app
 app = Flask(__name__)
-app.secret_key = os.getenv('SECRET_KEY', 'firefly-secret-key-change-in-production')
+
+# Load configuration with validated SECRET_KEY
+app.config.from_object(Config)
+app.secret_key = Config.SECRET_KEY
+
+# Initialize CSRF protection
+csrf = CSRFProtect(app)
+
+# Configure CSRF
+app.config['WTF_CSRF_TIME_LIMIT'] = None  # No time limit
+app.config['WTF_CSRF_SSL_STRICT'] = False  # Allow HTTP in dev
+
+# Initialize Rate Limiter
+limiter = Limiter(
+    app=app,
+    key_func=get_remote_address,
+    default_limits=["200 per day", "50 per hour"],
+    storage_uri="memory://",
+    strategy="fixed-window"
+)
+
+# Configure rate limit headers
+app.config['RATELIMIT_HEADERS_ENABLED'] = True
 
 # Initialize Flask-Login
 login_manager = LoginManager()
@@ -42,6 +96,8 @@ def index():
 
 
 @app.route('/login', methods=['GET', 'POST'])
+@limiter.limit("5 per minute")  # Max 5 login attempts per minute
+@limiter.limit("20 per hour")   # Max 20 login attempts per hour
 def login():
     """Login page"""
     if current_user.is_authenticated:
@@ -55,10 +111,19 @@ def login():
 
         if user:
             login_user(user)
+            logger.info(f"Successful login: {username} from {request.remote_addr}")
             flash('Successfully logged in!', 'success')
+
+            # SECURITY FIX: Validate next parameter to prevent open redirect
             next_page = request.args.get('next')
+            if next_page and not is_safe_url(next_page):
+                logger.warning(f"Blocked unsafe redirect to: {next_page} from {request.remote_addr}")
+                next_page = None
+
             return redirect(next_page if next_page else url_for('dashboard'))
         else:
+            # SECURITY: Log failed login attempts
+            logger.warning(f"Failed login attempt: {username} from {request.remote_addr}")
             flash('Invalid username or password', 'error')
 
     return render_template('login.html')
@@ -73,10 +138,51 @@ def logout():
     return redirect(url_for('login'))
 
 
+@app.route('/change-password', methods=['GET', 'POST'])
+@login_required
+@limiter.limit("10 per minute")
+def change_password_route():
+    """Change password page"""
+    if request.method == 'POST':
+        current_password = request.form.get('current_password')
+        new_password = request.form.get('new_password')
+        confirm_password = request.form.get('confirm_password')
+
+        # Validate current password
+        user = User.authenticate(current_user.username, current_password)
+        if not user:
+            flash('Current password is incorrect', 'error')
+            return redirect(url_for('change_password_route'))
+
+        # Validate new password
+        if len(new_password) < 12:
+            flash('New password must be at least 12 characters', 'error')
+            return redirect(url_for('change_password_route'))
+
+        if new_password != confirm_password:
+            flash('New passwords do not match', 'error')
+            return redirect(url_for('change_password_route'))
+
+        # Change password
+        if change_password(current_user.username, new_password):
+            flash('Password changed successfully!', 'success')
+            logger.info(f"Password changed for user: {current_user.username}")
+            return redirect(url_for('dashboard'))
+        else:
+            flash('Failed to change password', 'error')
+
+    force_change = is_default_password(current_user.username)
+    return render_template('change_password.html', force_change=force_change)
+
+
 @app.route('/dashboard')
 @login_required
 def dashboard():
     """Main dashboard"""
+    # Check if user needs to change password
+    if is_default_password(current_user.username):
+        flash('⚠️ You are using the initial password. Please change it immediately!', 'warning')
+
     stats = get_stats()
     recent_logs = get_recent_logs(limit=20)
     return render_template('dashboard.html', stats=stats, recent_logs=recent_logs)
@@ -209,6 +315,24 @@ def not_found(error):
 def internal_error(error):
     """500 error handler"""
     return render_template('error.html', error='Internal server error', code=500), 500
+
+
+@app.errorhandler(CSRFError)
+def handle_csrf_error(e):
+    """Handle CSRF validation errors"""
+    logger.warning(f"CSRF validation failed: {e.description} from {request.remote_addr}")
+    flash('Security validation failed. Please try again.', 'error')
+    return redirect(url_for('login')), 400
+
+
+@app.errorhandler(429)
+def ratelimit_handler(e):
+    """Handle rate limit exceeded errors"""
+    logger.warning(f"Rate limit exceeded: {request.remote_addr} - {request.endpoint}")
+    flash('Too many requests. Please try again later.', 'error')
+    return render_template('error.html',
+                         error='Too many requests',
+                         code=429), 429
 
 
 def create_app():
