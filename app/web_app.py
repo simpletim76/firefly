@@ -14,10 +14,10 @@ from app.database import (
     toggle_whitelist_entry, get_recent_logs, get_stats,
     get_logs_by_domain, get_all_config, set_config,
     # Profile operations
-    create_profile, get_all_profiles, get_profile, update_profile, delete_profile,
+    create_profile, get_all_profiles, get_profile, update_profile,
     get_profile_stats,
     # Device operations
-    get_all_devices, get_device_by_ip, update_device_profile, register_device, delete_device,
+    get_all_devices, get_device_by_ip, update_device_profile, register_device,
     # Profile whitelist operations
     add_to_profile_whitelist, remove_from_profile_whitelist, get_profile_whitelist,
     toggle_profile_whitelist_entry, copy_whitelist_to_profile
@@ -218,18 +218,20 @@ def profiles():
 
 @app.route('/profiles/new', methods=['GET', 'POST'])
 @login_required
-def create_new_profile():
+def new_profile():
     """Create a new profile"""
     if request.method == 'POST':
         name = request.form.get('name')
         age = request.form.get('age', type=int)
         color = request.form.get('color', '#3B82F6')
+        enabled = request.form.get('enabled') == '1'
+        is_default = request.form.get('is_default') == '1'
 
         if not name:
             flash('Profile name is required', 'error')
-            return redirect(url_for('create_new_profile'))
+            return redirect(url_for('new_profile'))
 
-        profile_id = create_profile(name, age, color)
+        profile_id = create_profile(name, age, color, is_default=is_default, enabled=enabled)
         flash(f'Profile "{name}" created successfully!', 'success')
         return redirect(url_for('profile_detail', profile_id=profile_id))
 
@@ -247,7 +249,8 @@ def profile_detail(profile_id):
 
     stats = get_profile_stats(profile_id)
     whitelist = get_profile_whitelist(profile_id, enabled_only=False)
-    return render_template('profile_detail.html', profile=profile, stats=stats, whitelist=whitelist)
+    all_profiles = get_all_profiles(enabled_only=False)
+    return render_template('profile_detail.html', profile=profile, stats=stats, whitelist=whitelist, all_profiles=all_profiles)
 
 
 @app.route('/profiles/<int:profile_id>/edit', methods=['GET', 'POST'])
@@ -263,8 +266,10 @@ def edit_profile(profile_id):
         name = request.form.get('name')
         age = request.form.get('age', type=int)
         color = request.form.get('color')
+        enabled = request.form.get('enabled') == '1'
+        is_default = request.form.get('is_default') == '1'
 
-        update_profile(profile_id, name=name, age=age, color=color)
+        update_profile(profile_id, name=name, age=age, color=color, enabled=enabled, is_default=is_default)
         flash(f'Profile "{name}" updated successfully!', 'success')
         return redirect(url_for('profile_detail', profile_id=profile_id))
 
@@ -273,11 +278,12 @@ def edit_profile(profile_id):
 
 @app.route('/profiles/<int:profile_id>/delete', methods=['POST'])
 @login_required
-def delete_profile_route(profile_id):
+def delete_profile(profile_id):
     """Delete a profile"""
+    from app.database import delete_profile as db_delete_profile
     profile = get_profile(profile_id)
     if profile:
-        delete_profile(profile_id)
+        db_delete_profile(profile_id)
         clear_device_cache()  # Clear cache since profile assignments changed
         flash(f'Profile "{profile["name"]}" deleted', 'success')
     else:
@@ -330,13 +336,19 @@ def toggle_profile_domain(profile_id, domain):
     return redirect(url_for('profile_detail', profile_id=profile_id))
 
 
-@app.route('/profiles/<int:target_id>/whitelist/copy/<int:source_id>', methods=['POST'])
+@app.route('/profiles/<int:profile_id>/whitelist/copy', methods=['POST'])
 @login_required
-def copy_profile_whitelist(target_id, source_id):
-    """Copy whitelist from one profile to another"""
-    count = copy_whitelist_to_profile(source_id, target_id)
-    flash(f'Copied {count} domains to profile whitelist', 'success')
-    return redirect(url_for('profile_detail', profile_id=target_id))
+def copy_whitelist(profile_id):
+    """Copy whitelist to another profile"""
+    target_profile_id = request.form.get('target_profile_id', type=int)
+
+    if not target_profile_id:
+        flash('Please select a target profile', 'error')
+        return redirect(url_for('profile_detail', profile_id=profile_id))
+
+    count = copy_whitelist_to_profile(profile_id, target_profile_id)
+    flash(f'Copied {count} domains to target profile', 'success')
+    return redirect(url_for('profile_detail', profile_id=profile_id))
 
 
 # Device management routes
@@ -366,13 +378,36 @@ def assign_device(device_id):
 
 @app.route('/devices/<int:device_id>/delete', methods=['POST'])
 @login_required
-def delete_device_route(device_id):
+def delete_device(device_id):
     """Delete a device"""
-    if delete_device(device_id):
+    from app.database import delete_device as db_delete_device
+    if db_delete_device(device_id):
         clear_device_cache()
         flash('Device deleted', 'success')
     else:
         flash('Device not found', 'error')
+
+    return redirect(url_for('devices'))
+
+
+@app.route('/devices/register', methods=['POST'])
+@login_required
+def register_device_manual():
+    """Manually register a new device"""
+    name = request.form.get('name', '').strip()
+    ip_address = request.form.get('ip_address', '').strip()
+    profile_id = request.form.get('profile_id', type=int)
+
+    if not name or not ip_address:
+        flash('Device name and IP address are required', 'error')
+        return redirect(url_for('devices'))
+
+    device_id = register_device(name, ip_address, profile_id)
+    if device_id:
+        clear_device_cache()
+        flash(f'Device "{name}" registered successfully', 'success')
+    else:
+        flash('Failed to register device (IP address may already exist)', 'error')
 
     return redirect(url_for('devices'))
 

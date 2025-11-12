@@ -1,0 +1,144 @@
+{% extends "base.html" %}
+
+{% block title %}{{ profile.name }} - Project Firefly{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2 style="color: {{ profile.color }};">{{ profile.name }}'s Profile</h2>
+    <p>Age: {{ profile.age or 'N/A' }} |
+        {% if profile.enabled %}
+            <span class="badge badge-success">Enabled</span>
+        {% else %}
+            <span class="badge badge-secondary">Disabled</span>
+        {% endif %}
+        {% if profile.is_default %}
+            <span class="badge badge-info">Default</span>
+        {% endif %}
+    </p>
+</div>
+
+<div class="section">
+    <a href="{{ url_for('profiles') }}" class="btn btn-secondary">← Back to Profiles</a>
+    <a href="{{ url_for('edit_profile', profile_id=profile.id) }}" class="btn btn-warning">Edit Profile</a>
+    <form method="POST" action="{{ url_for('delete_profile', profile_id=profile.id) }}" style="display: inline;">
+        <button type="submit" class="btn btn-danger" onclick="return confirm('Delete this profile? This will remove all whitelist entries.')">Delete Profile</button>
+    </form>
+</div>
+
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-value">{{ stats.whitelist_count }}</div>
+        <div class="stat-label">Whitelisted Domains</div>
+    </div>
+
+    <div class="stat-card stat-info">
+        <div class="stat-value">{{ stats.device_count }}</div>
+        <div class="stat-label">Assigned Devices</div>
+    </div>
+
+    <div class="stat-card stat-success">
+        <div class="stat-value">{{ stats.allowed_queries }}</div>
+        <div class="stat-label">Allowed Queries</div>
+    </div>
+
+    <div class="stat-card stat-danger">
+        <div class="stat-value">{{ stats.blocked_queries }}</div>
+        <div class="stat-label">Blocked Queries</div>
+    </div>
+</div>
+
+<div class="section">
+    <h3>Add Domain to Whitelist</h3>
+    <form method="POST" action="{{ url_for('add_profile_domain', profile_id=profile.id) }}" class="form-inline">
+        <div class="form-group">
+            <label for="domain">Domain:</label>
+            <input type="text" id="domain" name="domain" placeholder="example.com" required>
+        </div>
+        <div class="form-group">
+            <label for="description">Description:</label>
+            <input type="text" id="description" name="description" placeholder="Optional description">
+        </div>
+        <button type="submit" class="btn btn-primary">Add Domain</button>
+    </form>
+</div>
+
+<div class="section">
+    <h3>Whitelisted Domains ({{ whitelist|length }})</h3>
+
+    {% if whitelist %}
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Domain</th>
+                    <th>Description</th>
+                    <th>Added By</th>
+                    <th>Added Date</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for domain in whitelist %}
+                <tr {% if not domain.enabled %}class="disabled"{% endif %}>
+                    <td><code>{{ domain.domain }}</code></td>
+                    <td>{{ domain.description or '-' }}</td>
+                    <td>{{ domain.added_by }}</td>
+                    <td>{{ domain.added_date }}</td>
+                    <td>
+                        {% if domain.enabled %}
+                            <span class="badge badge-success">Enabled</span>
+                        {% else %}
+                            <span class="badge badge-secondary">Disabled</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <form method="POST" action="{{ url_for('toggle_profile_domain', profile_id=profile.id, domain=domain.domain) }}" style="display: inline;">
+                            <button type="submit" class="btn btn-sm btn-warning">
+                                {% if domain.enabled %}Disable{% else %}Enable{% endif %}
+                            </button>
+                        </form>
+                        <form method="POST" action="{{ url_for('remove_profile_domain', profile_id=profile.id, domain=domain.domain) }}" style="display: inline;">
+                            <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Remove {{ domain.domain }}?')">Remove</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <p>No domains in whitelist. Add domains above.</p>
+    </div>
+    {% endif %}
+</div>
+
+<div class="section">
+    <h3>Copy Whitelist</h3>
+    <form method="POST" action="{{ url_for('copy_whitelist', profile_id=profile.id) }}" class="form-inline">
+        <div class="form-group">
+            <label for="target_profile">Copy all domains to:</label>
+            <select id="target_profile" name="target_profile_id" required>
+                <option value="">Select profile...</option>
+                {% for p in all_profiles %}
+                    {% if p.id != profile.id %}
+                    <option value="{{ p.id }}">{{ p.name }}</option>
+                    {% endif %}
+                {% endfor %}
+            </select>
+        </div>
+        <button type="submit" class="btn btn-secondary">Copy Whitelist</button>
+    </form>
+</div>
+
+<div class="info-box">
+    <h4>ℹ️ Whitelist Tips</h4>
+    <ul>
+        <li>Add parent domains (e.g., <code>example.com</code>) to allow all subdomains</li>
+        <li>Each profile has its own independent whitelist</li>
+        <li>Copy whitelists between profiles to save time</li>
+        <li>Check the <a href="{{ url_for('logs') }}">Logs</a> to see blocked domains</li>
+    </ul>
+</div>
+{% endblock %}

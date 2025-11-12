@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+
+{% block title %}Profiles - Project Firefly{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>Profile Management</h2>
+    <p>Manage family member profiles and their whitelists</p>
+</div>
+
+<div class="section">
+    <a href="{{ url_for('new_profile') }}" class="btn btn-primary">+ Add New Profile</a>
+</div>
+
+<div class="section">
+    <h3>Profiles ({{ profiles|length }})</h3>
+
+    {% if profiles %}
+    <div class="stats-grid">
+        {% for profile in profiles %}
+        <div class="stat-card {% if not profile.enabled %}disabled{% endif %}" style="border-left: 4px solid {{ profile.color }};">
+            <div class="stat-value" style="color: {{ profile.color }};">{{ profile.name }}</div>
+            <div class="stat-label">Age: {{ profile.age or 'N/A' }}</div>
+            <div class="stat-label">
+                {% if profile.enabled %}
+                    <span class="badge badge-success">Enabled</span>
+                {% else %}
+                    <span class="badge badge-secondary">Disabled</span>
+                {% endif %}
+                {% if profile.is_default %}
+                    <span class="badge badge-info">Default</span>
+                {% endif %}
+            </div>
+            <div style="margin-top: 10px;">
+                <a href="{{ url_for('profile_detail', profile_id=profile.id) }}" class="btn btn-sm btn-primary">View Details</a>
+                <a href="{{ url_for('edit_profile', profile_id=profile.id) }}" class="btn btn-sm btn-warning">Edit</a>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <p>No profiles created yet. Add your first profile above.</p>
+    </div>
+    {% endif %}
+</div>
+
+<div class="info-box">
+    <h4>ℹ️ Profile Tips</h4>
+    <ul>
+        <li>Create separate profiles for each family member with age-appropriate whitelists</li>
+        <li>Set one profile as "Default" for unassigned devices</li>
+        <li>Use colors to easily identify profiles in logs and reports</li>
+        <li>Assign devices to profiles in the <a href="{{ url_for('devices') }}">Devices</a> section</li>
+    </ul>
+</div>
+{% endblock %}

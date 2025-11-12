@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+
+{% block title %}Devices - Project Firefly{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>Device Management</h2>
+    <p>View and assign devices to profiles</p>
+</div>
+
+<div class="section">
+    <h3>Registered Devices ({{ devices|length }})</h3>
+
+    {% if devices %}
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Device Name</th>
+                    <th>IP Address</th>
+                    <th>Assigned Profile</th>
+                    <th>Last Seen</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for device in devices %}
+                <tr>
+                    <td>
+                        <strong>{{ device.name }}</strong>
+                        {% if device.profile_color %}
+                        <span style="display: inline-block; width: 12px; height: 12px; border-radius: 50%; background-color: {{ device.profile_color }}; margin-left: 5px;"></span>
+                        {% endif %}
+                    </td>
+                    <td><code>{{ device.ip_address }}</code></td>
+                    <td>
+                        {% if device.profile_name %}
+                            <span class="badge badge-info" style="background-color: {{ device.profile_color }};">{{ device.profile_name }}</span>
+                        {% else %}
+                            <span class="badge badge-secondary">Unassigned</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ device.last_seen or 'Never' }}</td>
+                    <td>
+                        <form method="POST" action="{{ url_for('assign_device', device_id=device.id) }}" style="display: inline;">
+                            <select name="profile_id" onchange="this.form.submit()" class="btn btn-sm">
+                                <option value="">Unassign</option>
+                                {% for profile in profiles %}
+                                <option value="{{ profile.id }}" {% if device.profile_id == profile.id %}selected{% endif %}>
+                                    {{ profile.name }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </form>
+                        <form method="POST" action="{{ url_for('delete_device', device_id=device.id) }}" style="display: inline;">
+                            <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Delete device {{ device.name }}?')">Delete</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <p>No devices registered yet. Devices will automatically register when they make DNS queries.</p>
+    </div>
+    {% endif %}
+</div>
+
+<div class="section">
+    <h3>Register New Device Manually</h3>
+    <form method="POST" action="{{ url_for('register_device_manual') }}" class="form-inline">
+        <div class="form-group">
+            <label for="name">Device Name:</label>
+            <input type="text" id="name" name="name" placeholder="e.g., Aurora's iPad" required>
+        </div>
+        <div class="form-group">
+            <label for="ip_address">IP Address:</label>
+            <input type="text" id="ip_address" name="ip_address" placeholder="192.168.1.10" required pattern="^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$">
+        </div>
+        <div class="form-group">
+            <label for="profile_id">Profile:</label>
+            <select id="profile_id" name="profile_id">
+                <option value="">None (Unassigned)</option>
+                {% for profile in profiles %}
+                <option value="{{ profile.id }}">{{ profile.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <button type="submit" class="btn btn-primary">Register Device</button>
+    </form>
+</div>
+
+<div class="info-box">
+    <h4>ℹ️ Device Management Tips</h4>
+    <ul>
+        <li><strong>Auto-Registration:</strong> Devices automatically register when they make DNS queries</li>
+        <li><strong>Profile Assignment:</strong> Assign devices to profiles to apply profile-specific whitelists</li>
+        <li><strong>Unassigned Devices:</strong> Use the default profile or global whitelist if no profile is assigned</li>
+        <li><strong>Static IPs:</strong> Consider setting static IP addresses or DHCP reservations for consistent filtering</li>
+        <li><strong>Last Seen:</strong> Tracks the most recent DNS query from each device</li>
+    </ul>
+</div>
+{% endblock %}

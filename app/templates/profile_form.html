@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+
+{% block title %}{% if profile %}Edit Profile{% else %}New Profile{% endif %} - Project Firefly{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>{% if profile %}Edit Profile{% else %}Create New Profile{% endif %}</h2>
+    <p>{% if profile %}Update {{ profile.name }}'s profile settings{% else %}Add a new family member profile{% endif %}</p>
+</div>
+
+<div class="section">
+    <a href="{% if profile %}{{ url_for('profile_detail', profile_id=profile.id) }}{% else %}{{ url_for('profiles') }}{% endif %}" class="btn btn-secondary">← Back</a>
+</div>
+
+<div class="section">
+    <form method="POST" style="max-width: 600px;">
+        <div class="form-group">
+            <label for="name">Name *</label>
+            <input type="text" id="name" name="name" value="{{ profile.name if profile else '' }}" placeholder="e.g., Aurora, Harriet" required>
+            <small>The name of the family member</small>
+        </div>
+
+        <div class="form-group">
+            <label for="age">Age</label>
+            <input type="number" id="age" name="age" value="{{ profile.age if profile else '' }}" min="1" max="120" placeholder="Optional">
+            <small>Optional: Used for reference and organizing profiles</small>
+        </div>
+
+        <div class="form-group">
+            <label for="color">Profile Color</label>
+            <input type="color" id="color" name="color" value="{{ profile.color if profile else '#3B82F6' }}">
+            <small>Color used to identify this profile in the interface</small>
+        </div>
+
+        <div class="form-group">
+            <label>
+                <input type="checkbox" name="enabled" value="1" {% if not profile or profile.enabled %}checked{% endif %}>
+                Enabled
+            </label>
+            <small>Disabled profiles cannot be used for filtering</small>
+        </div>
+
+        <div class="form-group">
+            <label>
+                <input type="checkbox" name="is_default" value="1" {% if profile and profile.is_default %}checked{% endif %}>
+                Set as Default Profile
+            </label>
+            <small>Default profile is used for devices not assigned to any profile</small>
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">{% if profile %}Update Profile{% else %}Create Profile{% endif %}</button>
+            <a href="{% if profile %}{{ url_for('profile_detail', profile_id=profile.id) }}{% else %}{{ url_for('profiles') }}{% endif %}" class="btn btn-secondary">Cancel</a>
+        </div>
+    </form>
+</div>
+
+<div class="info-box">
+    <h4>ℹ️ Profile Settings</h4>
+    <ul>
+        <li><strong>Name:</strong> Required - The family member's name</li>
+        <li><strong>Age:</strong> Optional - Helps organize and document profiles</li>
+        <li><strong>Color:</strong> Visual identifier in dashboard and logs</li>
+        <li><strong>Enabled:</strong> Must be enabled for the profile to be used</li>
+        <li><strong>Default:</strong> Only one profile can be the default</li>
+    </ul>
+</div>
+{% endblock %}
