@@ -10,8 +10,11 @@ import os
 # Add app directory to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'app'))
 
+# Set database path for local execution
+os.environ['DB_PATH'] = os.path.join(os.path.dirname(__file__), 'data', 'firefly.db')
+
 from database import (
-    init_db, create_profile, add_to_profile_whitelist,
+    init_database, create_profile, add_to_profile_whitelist,
     register_device, get_profile, get_profile_whitelist
 )
 
@@ -26,24 +29,20 @@ def initialize_profiles():
 
     # Initialize database
     print("📊 Initializing database...")
-    init_db()
+    init_database()
 
     # Create profiles
     print("\n👧 Creating profiles...")
     harriet_id = create_profile(
         name="Harriet",
         age=6,
-        color="#FF69B4",  # Pink
-        is_default=False,
-        enabled=True
+        color="#FF69B4"  # Pink
     )
 
     aurora_id = create_profile(
         name="Aurora",
         age=9,
-        color="#9370DB",  # Purple
-        is_default=False,
-        enabled=True
+        color="#9370DB"  # Purple
     )
 
     print(f"   ✓ Harriet (age 6) - Profile ID: {harriet_id}")
