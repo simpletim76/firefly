@@ -8,7 +8,13 @@ import threading
 from dnslib import DNSRecord, DNSHeader, RR, A, QTYPE
 from dnslib.server import DNSServer, DNSHandler, BaseResolver
 import logging
-from app.database import is_domain_whitelisted, log_dns_query, get_config
+from app.database import (
+    is_domain_whitelisted,
+    is_domain_whitelisted_for_profile,
+    log_dns_query,
+    get_config
+)
+from app.device_manager import get_device_manager
 
 logging.basicConfig(
     level=logging.INFO,
@@ -52,14 +58,19 @@ class WhitelistResolver(BaseResolver):
 
         logger.debug(f"Query from {client_ip}: {qname} ({qtype})")
 
-        # Check if domain is whitelisted
-        if self.is_allowed(qname):
-            logger.info(f"✓ ALLOWED: {qname} from {client_ip}")
+        # Get device and profile information
+        device_manager = get_device_manager()
+        device_id, profile_id = device_manager.get_profile_for_ip(client_ip)
+
+        # Check if domain is whitelisted for this profile
+        if self.is_allowed(qname, profile_id):
+            logger.info(f"✓ ALLOWED: {qname} from {client_ip} (profile: {profile_id})")
 
             # Forward to upstream DNS
             try:
                 response_ip = self.forward_to_upstream(request)
-                log_dns_query(client_ip, qname, qtype, True, response_ip)
+                log_dns_query(client_ip, qname, qtype, True, response_ip,
+                            profile_id=profile_id, device_id=device_id)
 
                 # If we got a valid response from upstream, use it
                 if response_ip:
@@ -73,36 +84,52 @@ class WhitelistResolver(BaseResolver):
                 reply.add_answer(RR(qname, QTYPE.A, rdata=A(self.block_ip), ttl=60))
 
         else:
-            logger.warning(f"✗ BLOCKED: {qname} from {client_ip}")
-            log_dns_query(client_ip, qname, qtype, False, self.block_ip)
+            logger.warning(f"✗ BLOCKED: {qname} from {client_ip} (profile: {profile_id})")
+            log_dns_query(client_ip, qname, qtype, False, self.block_ip,
+                        profile_id=profile_id, device_id=device_id)
 
             # Return block IP for denied domains
             reply.add_answer(RR(qname, QTYPE.A, rdata=A(self.block_ip), ttl=60))
 
         return reply
 
-    def is_allowed(self, domain):
+    def is_allowed(self, domain, profile_id=None):
         """
         Check if domain is whitelisted (including subdomains)
 
         Args:
             domain: Domain name to check
+            profile_id: Profile ID to check against (None = check global whitelist only)
 
         Returns:
             True if allowed, False otherwise
         """
         domain = domain.lower().rstrip('.')
 
-        # Check exact match
-        if is_domain_whitelisted(domain):
-            return True
-
-        # Check parent domains (for subdomains)
-        parts = domain.split('.')
-        for i in range(len(parts)):
-            parent_domain = '.'.join(parts[i:])
-            if is_domain_whitelisted(parent_domain):
+        # If profile_id is provided, check profile-specific whitelist
+        if profile_id is not None:
+            # Check exact match for profile
+            if is_domain_whitelisted_for_profile(domain, profile_id):
                 return True
+
+            # Check parent domains (for subdomains) for profile
+            parts = domain.split('.')
+            for i in range(len(parts)):
+                parent_domain = '.'.join(parts[i:])
+                if is_domain_whitelisted_for_profile(parent_domain, profile_id):
+                    return True
+        else:
+            # No profile - check global whitelist for backwards compatibility
+            # Check exact match
+            if is_domain_whitelisted(domain):
+                return True
+
+            # Check parent domains (for subdomains)
+            parts = domain.split('.')
+            for i in range(len(parts)):
+                parent_domain = '.'.join(parts[i:])
+                if is_domain_whitelisted(parent_domain):
+                    return True
 
         return False
 

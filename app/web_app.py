@@ -12,8 +12,17 @@ from app.auth import User
 from app.database import (
     add_to_whitelist, remove_from_whitelist, get_whitelist,
     toggle_whitelist_entry, get_recent_logs, get_stats,
-    get_logs_by_domain, get_all_config, set_config
+    get_logs_by_domain, get_all_config, set_config,
+    # Profile operations
+    create_profile, get_all_profiles, get_profile, update_profile, delete_profile,
+    get_profile_stats,
+    # Device operations
+    get_all_devices, get_device_by_ip, update_device_profile, register_device, delete_device,
+    # Profile whitelist operations
+    add_to_profile_whitelist, remove_from_profile_whitelist, get_profile_whitelist,
+    toggle_profile_whitelist_entry, copy_whitelist_to_profile
 )
+from app.device_manager import clear_device_cache
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -196,6 +205,198 @@ def api_logs():
     limit = request.args.get('limit', 20, type=int)
     logs = get_recent_logs(limit=limit)
     return jsonify(logs)
+
+
+# Profile management routes
+@app.route('/profiles')
+@login_required
+def profiles():
+    """List all profiles"""
+    all_profiles = get_all_profiles(enabled_only=False)
+    return render_template('profiles.html', profiles=all_profiles)
+
+
+@app.route('/profiles/new', methods=['GET', 'POST'])
+@login_required
+def create_new_profile():
+    """Create a new profile"""
+    if request.method == 'POST':
+        name = request.form.get('name')
+        age = request.form.get('age', type=int)
+        color = request.form.get('color', '#3B82F6')
+
+        if not name:
+            flash('Profile name is required', 'error')
+            return redirect(url_for('create_new_profile'))
+
+        profile_id = create_profile(name, age, color)
+        flash(f'Profile "{name}" created successfully!', 'success')
+        return redirect(url_for('profile_detail', profile_id=profile_id))
+
+    return render_template('profile_form.html', profile=None)
+
+
+@app.route('/profiles/<int:profile_id>')
+@login_required
+def profile_detail(profile_id):
+    """Profile detail page"""
+    profile = get_profile(profile_id)
+    if not profile:
+        flash('Profile not found', 'error')
+        return redirect(url_for('profiles'))
+
+    stats = get_profile_stats(profile_id)
+    whitelist = get_profile_whitelist(profile_id, enabled_only=False)
+    return render_template('profile_detail.html', profile=profile, stats=stats, whitelist=whitelist)
+
+
+@app.route('/profiles/<int:profile_id>/edit', methods=['GET', 'POST'])
+@login_required
+def edit_profile(profile_id):
+    """Edit a profile"""
+    profile = get_profile(profile_id)
+    if not profile:
+        flash('Profile not found', 'error')
+        return redirect(url_for('profiles'))
+
+    if request.method == 'POST':
+        name = request.form.get('name')
+        age = request.form.get('age', type=int)
+        color = request.form.get('color')
+
+        update_profile(profile_id, name=name, age=age, color=color)
+        flash(f'Profile "{name}" updated successfully!', 'success')
+        return redirect(url_for('profile_detail', profile_id=profile_id))
+
+    return render_template('profile_form.html', profile=profile)
+
+
+@app.route('/profiles/<int:profile_id>/delete', methods=['POST'])
+@login_required
+def delete_profile_route(profile_id):
+    """Delete a profile"""
+    profile = get_profile(profile_id)
+    if profile:
+        delete_profile(profile_id)
+        clear_device_cache()  # Clear cache since profile assignments changed
+        flash(f'Profile "{profile["name"]}" deleted', 'success')
+    else:
+        flash('Profile not found', 'error')
+
+    return redirect(url_for('profiles'))
+
+
+# Profile whitelist routes
+@app.route('/profiles/<int:profile_id>/whitelist/add', methods=['POST'])
+@login_required
+def add_profile_domain(profile_id):
+    """Add domain to profile whitelist"""
+    domain = request.form.get('domain', '').strip().lower()
+    description = request.form.get('description', '').strip()
+
+    if not domain:
+        flash('Domain cannot be empty', 'error')
+        return redirect(url_for('profile_detail', profile_id=profile_id))
+
+    if add_to_profile_whitelist(profile_id, domain, description, current_user.username):
+        flash(f'Domain "{domain}" added to whitelist', 'success')
+    else:
+        flash(f'Domain "{domain}" already exists in whitelist', 'error')
+
+    return redirect(url_for('profile_detail', profile_id=profile_id))
+
+
+@app.route('/profiles/<int:profile_id>/whitelist/remove/<domain>', methods=['POST'])
+@login_required
+def remove_profile_domain(profile_id, domain):
+    """Remove domain from profile whitelist"""
+    if remove_from_profile_whitelist(profile_id, domain):
+        flash(f'Domain "{domain}" removed from whitelist', 'success')
+    else:
+        flash(f'Domain "{domain}" not found', 'error')
+
+    return redirect(url_for('profile_detail', profile_id=profile_id))
+
+
+@app.route('/profiles/<int:profile_id>/whitelist/toggle/<domain>', methods=['POST'])
+@login_required
+def toggle_profile_domain(profile_id, domain):
+    """Toggle domain in profile whitelist"""
+    if toggle_profile_whitelist_entry(profile_id, domain):
+        flash(f'Domain "{domain}" toggled', 'success')
+    else:
+        flash(f'Domain "{domain}" not found', 'error')
+
+    return redirect(url_for('profile_detail', profile_id=profile_id))
+
+
+@app.route('/profiles/<int:target_id>/whitelist/copy/<int:source_id>', methods=['POST'])
+@login_required
+def copy_profile_whitelist(target_id, source_id):
+    """Copy whitelist from one profile to another"""
+    count = copy_whitelist_to_profile(source_id, target_id)
+    flash(f'Copied {count} domains to profile whitelist', 'success')
+    return redirect(url_for('profile_detail', profile_id=target_id))
+
+
+# Device management routes
+@app.route('/devices')
+@login_required
+def devices():
+    """List all devices"""
+    all_devices = get_all_devices()
+    all_profiles = get_all_profiles()
+    return render_template('devices.html', devices=all_devices, profiles=all_profiles)
+
+
+@app.route('/devices/<int:device_id>/assign', methods=['POST'])
+@login_required
+def assign_device(device_id):
+    """Assign device to profile"""
+    profile_id = request.form.get('profile_id', type=int)
+
+    if update_device_profile(device_id, profile_id):
+        clear_device_cache()  # Clear cache so new assignment takes effect
+        flash('Device assigned to profile', 'success')
+    else:
+        flash('Failed to assign device', 'error')
+
+    return redirect(url_for('devices'))
+
+
+@app.route('/devices/<int:device_id>/delete', methods=['POST'])
+@login_required
+def delete_device_route(device_id):
+    """Delete a device"""
+    if delete_device(device_id):
+        clear_device_cache()
+        flash('Device deleted', 'success')
+    else:
+        flash('Device not found', 'error')
+
+    return redirect(url_for('devices'))
+
+
+# API endpoints for profiles
+@app.route('/api/profiles')
+@login_required
+def api_profiles():
+    """Get all profiles as JSON"""
+    return jsonify(get_all_profiles())
+
+
+@app.route('/api/profile/<int:profile_id>/stats')
+@login_required
+def api_profile_stats(profile_id):
+    """Get profile statistics as JSON"""
+    return jsonify(get_profile_stats(profile_id))
+
+
+@app.route('/api/devices')
+@login_required
+def api_devices():
+    """Get all devices as JSON"""
+    return jsonify(get_all_devices())
 
 
 # Error handlers
