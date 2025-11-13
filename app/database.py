@@ -379,14 +379,20 @@ def update_last_login(username: str):
 
 
 # Profile operations
-def create_profile(name: str, age: int = None, color: str = '#3B82F6') -> int:
+def create_profile(name: str, age: int = None, color: str = '#3B82F6',
+                   is_default: bool = False, enabled: bool = True) -> int:
     """Create a new profile"""
     with get_db() as conn:
         cursor = conn.cursor()
+
+        # If setting as default, unset other defaults first
+        if is_default:
+            cursor.execute('UPDATE profiles SET is_default = 0')
+
         cursor.execute('''
-            INSERT INTO profiles (name, age, color)
-            VALUES (?, ?, ?)
-        ''', (name, age, color))
+            INSERT INTO profiles (name, age, color, is_default, enabled)
+            VALUES (?, ?, ?, ?, ?)
+        ''', (name, age, color, is_default, enabled))
         return cursor.lastrowid
 
 
@@ -411,10 +417,16 @@ def get_all_profiles(enabled_only: bool = True) -> List[Dict]:
         return [dict(row) for row in cursor.fetchall()]
 
 
-def update_profile(profile_id: int, name: str = None, age: int = None, color: str = None) -> bool:
+def update_profile(profile_id: int, name: str = None, age: int = None, color: str = None,
+                   enabled: bool = None, is_default: bool = None) -> bool:
     """Update a profile"""
     with get_db() as conn:
         cursor = conn.cursor()
+
+        # If setting as default, unset other defaults first
+        if is_default:
+            cursor.execute('UPDATE profiles SET is_default = 0')
+
         updates = []
         params = []
 
@@ -427,6 +439,12 @@ def update_profile(profile_id: int, name: str = None, age: int = None, color: st
         if color is not None:
             updates.append('color = ?')
             params.append(color)
+        if enabled is not None:
+            updates.append('enabled = ?')
+            params.append(enabled)
+        if is_default is not None:
+            updates.append('is_default = ?')
+            params.append(is_default)
 
         if not updates:
             return False
