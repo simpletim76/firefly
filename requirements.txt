@@ -2,4 +2,5 @@ flask==3.0.0
 flask-login==0.6.3
 dnslib==0.9.24
 werkzeug==3.0.1
-gunicorn==21.2.0
+gunicorn==22.0.0
+zipp>=3.19.1 # not directly required, pinned by Snyk to avoid a vulnerability
